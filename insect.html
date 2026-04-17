@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Procedural Creature</title>
+    <style>
+        body { margin: 0; background: #05050a; overflow: hidden; }
+        canvas { display: block; width: 100vw; height: 100vh; cursor: none; }
+    </style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+
+let width, height;
+const SEG_COUNT = 80;
+const SEG_DIST = 8;
+const BODY_WIDTH = 20;
+
+let mouse = { x: 0, y: 0 };
+let segments = [];
+
+function init() {
+    width = window.innerWidth;
+    height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+    
+    segments = [];
+    for (let i = 0; i < SEG_COUNT; i++) {
+        segments.push({ x: width / 2, y: height / 2, angle: 0 });
+    }
+    mouse.x = width / 2;
+    mouse.y = height / 2;
+}
+
+window.addEventListener('resize', init);
+window.addEventListener('mousemove', (e) => {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+});
+
+function update() {
+    let head = segments[0];
+    let dx = mouse.x - head.x;
+    let dy = mouse.y - head.y;
+    let dist = Math.sqrt(dx * dx + dy * dy);
+    
+    if (dist > 2) {
+        head.angle = Math.atan2(dy, dx);
+        head.x += (dx / dist) * 6;
+        head.y += (dy / dist) * 6;
+    }
+
+    for (let i = 1; i < SEG_COUNT; i++) {
+        let seg = segments[i];
+        let prev = segments[i - 1];
+        let dx = prev.x - seg.x;
+        let dy = prev.y - seg.y;
+        
+        seg.angle = Math.atan2(dy, dx);
+        seg.x = prev.x - Math.cos(seg.angle) * SEG_DIST;
+        seg.y = prev.y - Math.sin(seg.angle) * SEG_DIST;
+    }
+}
+
+function draw() {
+    ctx.fillStyle = '#05050a';
+    ctx.fillRect(0, 0, width, height);
+
+    for (let i = SEG_COUNT - 1; i >= 0; i--) {
+        let seg = segments[i];
+        let perp = seg.angle + Math.PI / 2;
+        
+        let widthFactor = Math.sin((i / SEG_COUNT) * Math.PI * 0.9);
+        let currentWidth = BODY_WIDTH * widthFactor + 5;
+
+        let ox = Math.cos(perp) * currentWidth;
+        let oy = Math.sin(perp) * currentWidth;
+
+        
+        if (i > 0) {
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(seg.x, seg.y);
+            ctx.lineTo(segments[i-1].x, segments[i-1].y);
+            ctx.stroke();
+        }
+
+        
+        ctx.strokeStyle = '#c8c8c8';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(seg.x + ox, seg.y + oy);
+        ctx.lineTo(seg.x - ox, seg.y - oy);
+        ctx.stroke();
+
+        
+        if ([10, 20, 30, 40].includes(i)) {
+            for (let side of [-1, 1]) {
+                ctx.strokeStyle = '#ffffff';
+                let sX = seg.x + Math.cos(perp * side) * currentWidth;
+                let sY = seg.y + Math.sin(perp * side) * currentWidth;
+                
+                let kneeAngle = (perp * side) + (0.5 * side);
+                let kX = sX + Math.cos(kneeAngle) * 30;
+                let kY = sY + Math.sin(kneeAngle) * 30;
+                
+                let footAngle = kneeAngle + 0.3;
+                let fX = kX + Math.cos(footAngle) * 15;
+                let fY = kY + Math.sin(footAngle) * 15;
+
+                ctx.beginPath();
+                ctx.moveTo(sX, sY);
+                ctx.lineTo(kX, kY);
+                ctx.lineTo(fX, fY);
+                ctx.stroke();
+
+                for (let fA of [-0.4, 0, 0.4]) {
+                    ctx.beginPath();
+                    ctx.moveTo(fX, fY);
+                    ctx.lineTo(fX + Math.cos(footAngle + fA) * 8, fY + Math.sin(footAngle + fA) * 8);
+                    ctx.stroke();
+                }
+            }
+        }
+
+        
+        if (i === 0) {
+            for (let a of [-0.6, 0.6]) {
+                let antA = seg.angle + a;
+                let ex = seg.x + Math.cos(antA) * 20;
+                let ey = seg.y + Math.sin(antA) * 20;
+                ctx.beginPath();
+                ctx.moveTo(seg.x, seg.y);
+                ctx.lineTo(ex, ey);
+                ctx.stroke();
+                ctx.fillStyle = '#ffffff';
+                ctx.beginPath();
+                ctx.arc(ex, ey, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+}
+
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
+
+init();
+loop();
+</script>
+</body>
+</html>
